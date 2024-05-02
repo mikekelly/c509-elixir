@@ -49,4 +49,28 @@ defmodule C509Test do
 
     assert C509.Certificate.verify(cert, issuer_public_key)
   end
+
+  test "mint a new certificate and verify it against the issuer public key" do
+    # generate key pair
+    {public_key, private_key} = :crypto.generate_key(:ecdh, :secp256r1)
+
+    tbs_cert = %C509.ToBeSignedCertificate{
+      type: 0,
+      serial_number: <<0x01F50D::24>>,
+      issuer: "RFC test CA",
+      valid_not_before: 1672531200,
+      valid_not_after: 1767225600,
+      subject: <<0x010123456789AB::56>>,
+      subject_public_key_algorithm: 1,
+      subject_public_key: <<0x02B1216AB96E5B3B3340F5BDF02E693F16213A04525ED44450B1019C2DFD3838AB::264>>,
+      extensions: 1,
+      issuer_signature_algorithm: 0
+    }
+
+    cert_bytes = C509.ToBeSignedCertificate.mint_certificate(tbs_cert, private_key)
+
+    {:ok, cert} = C509.Certificate.from_bytes(cert_bytes)
+
+    assert C509.Certificate.verify(cert, public_key)
+  end
 end
