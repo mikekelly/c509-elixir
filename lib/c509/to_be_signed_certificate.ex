@@ -28,7 +28,7 @@ defmodule C509.ToBeSignedCertificate do
       tbs_cert.valid_not_after,
       tbs_cert.subject,
       tbs_cert.subject_public_key_algorithm,
-      tbs_cert.subject_public_key,
+      %CBOR.Tag{tag: :bytes, value: tbs_cert.subject_public_key},
       tbs_cert.extensions,
       tbs_cert.issuer_signature_algorithm
     ]
