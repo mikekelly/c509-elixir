@@ -266,4 +266,69 @@ defmodule C509Test do
 
     assert {:error, :root_of_chain_not_authoritative} == C509.CertificateChain.verify_cert(cert_chain, cert, [])
   end
+
+  test "verify we get the right tbs csr from a precooked csr" do
+    csr_bytes = Base.decode16!("000047010123456789ab01582102b1216ab96e5b3b3340f5bdf02e693f16213a04525ed44450b1019c2dfd3838ab015840ef025bb39d181fbe2361249278543f0e289a7d4b97d9f052f3e34372e88b288825343c51e4589c155a8fc3f6163f2d4e918fc9d89e27a9d0b0e982d1a39626ae", case: :lower)
+    tbs_csr_bytes = Base.decode16!("000047010123456789ab01582102b1216ab96e5b3b3340f5bdf02e693f16213a04525ed44450b1019c2dfd3838ab01", case: :lower)
+
+    {:ok, csr} = C509.CertificateSigningRequest.from_bytes(csr_bytes)
+
+    assert tbs_csr_bytes == C509.CertificateSigningRequest.to_be_signed_bytes(csr)
+  end
+
+  test "verify a precooked csr" do
+    subject_private_key_hex = "D718111F3F9BD91B92FF6877F386BDBFCEA7154268FD7F2FB56EE17D99EA16D4"
+    subject_private_key_bytes = Base.decode16!(subject_private_key_hex)
+    {subject_public_key, _} = :crypto.generate_key(:ecdh, :secp256r1, subject_private_key_bytes)
+
+    csr_bytes = Base.decode16!("000047010123456789ab01582102b1216ab96e5b3b3340f5bdf02e693f16213a04525ed44450b1019c2dfd3838ab015840fb61767f0828e974a231a742bc677fa6c113d4536db883c51caf5c25bd46b7c9182634ae4c7a011498dbb032c46c374afed983ca310eed5315c549636fd7df90", case: :lower)
+
+    {:ok, csr} = C509.CertificateSigningRequest.from_bytes(csr_bytes)
+
+    assert C509.CertificateSigningRequest.verified_by_subject?(csr, subject_public_key)
+  end
+
+  test "build a csr, sign it, verify it against the public key " do
+    {public_key, private_key} = :crypto.generate_key(:ecdh, :secp256r1)
+
+    subject = "foo"
+    subject_public_key_algorithm = 1
+    subject_public_key = C509.compress_r1(public_key)
+    extensions = 0
+
+    csr = %C509.CertificateSigningRequest{
+      type: 0,
+      subject_signature_algorithm: 0,
+      subject: subject,
+      subject_public_key_algorithm: subject_public_key_algorithm,
+      subject_public_key: subject_public_key,
+      extensions: extensions
+    }
+
+    signed_csr = C509.CertificateSigningRequest.sign(csr, private_key)
+
+    assert C509.CertificateSigningRequest.verified_by_subject?(signed_csr, public_key)
+  end
+
+  test "ensure csr to byte and back is the same" do
+    {public_key, private_key} = :crypto.generate_key(:ecdh, :secp256r1)
+
+    subject = "foo"
+    subject_public_key_algorithm = 1
+    subject_public_key = C509.compress_r1(public_key)
+    extensions = 0
+
+    csr = %C509.CertificateSigningRequest{
+      type: 0,
+      subject_signature_algorithm: 0,
+      subject: subject,
+      subject_public_key_algorithm: subject_public_key_algorithm,
+      subject_public_key: subject_public_key,
+      extensions: extensions
+    }
+
+    signed_csr = C509.CertificateSigningRequest.sign(csr, private_key)
+
+    assert {:ok, signed_csr} == C509.CertificateSigningRequest.from_bytes(C509.CertificateSigningRequest.to_bytes(signed_csr))
+  end
 end
