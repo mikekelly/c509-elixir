@@ -24,3 +24,8 @@ c509-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# Ignore compiled NIF binaries
+/priv/native/*.so
+
+.elixir_ls
